@@ -26,7 +26,7 @@ const createTask = async (req, res) => {
     // creamos la tarea usando el modelo Task
     const newTask = await Task.create({
       title,                // titulo obligatorio
-      detail: detail || "", // detalle opcional
+      detail, // detalle opcional
       date,                 // fecha actual
       time,                 // hora actual
       status: "Por hacer",  // estado inicial
