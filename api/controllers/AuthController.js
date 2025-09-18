@@ -44,7 +44,7 @@ const login = async (req, res) => {
 
     // generamos token JWT con 2 horas de expiración
     const token = jwt.sign(
-      { id: user._id, email: user.email },
+      { id: user._id.toString(), email: user.email },
       process.env.JWT_SECRET,
       { expiresIn: "2h", jwtid: jti }
     );
