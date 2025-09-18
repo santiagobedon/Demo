@@ -35,7 +35,7 @@ const TaskSchema = new mongoose.Schema({
     default: "Por hacer",
   },
   // referencia al usuario que creo la tarea (relacion con User)
-  userId: {
+  user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
     required: true,
