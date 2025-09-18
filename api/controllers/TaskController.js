@@ -30,7 +30,7 @@ const createTask = async (req, res) => {
       date,                 // fecha actual
       time,                 // hora actual
       status: "Por hacer",  // estado inicial
-      userId: req.user.id,  // asociamos la tarea al usuario logueado
+      user: req.userId,     // asociamos la tarea al usuario logueado
     });
 
     // enviamos respuesta 201 con datos de la tarea creada
@@ -43,7 +43,7 @@ const createTask = async (req, res) => {
         date: newTask.date,
         time: newTask.time,
         status: newTask.status,
-        userId: newTask.userId,
+        user: newTask.user,
       },
     });
   } catch (err) {
@@ -55,5 +55,25 @@ const createTask = async (req, res) => {
   }
 };
 
-// exportamos la funcion para usarla en rutas
-module.exports = { createTask };
+// ======================================================
+// FUNCION PARA OBTENER TODAS LAS TAREAS DEL USUARIO
+// ======================================================
+const getUserTasks = async (req, res) => {
+  try {
+    const tasks = await Task.find({ user: req.userId }).lean();
+
+    res.status(200).json({
+      message: "Tareas obtenidas exitosamente",
+      tasks,
+    });
+  } catch (err) {
+    console.error("getUserTasks error:", err.message);
+    res.status(500).json({
+      message: "No pudimos obtener las tareas, inténtalo de nuevo",
+      error: err.message,
+    });
+  }
+};
+
+// exportamos las funciones para usarlas en rutas
+module.exports = { createTask, getUserTasks };
