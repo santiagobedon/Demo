@@ -109,7 +109,8 @@ const forgotPassword = async (req, res) => {
 
     await user.save();
 
-    const resetLink = `http://localhost:8080/api/v1/auth/reset-password/${resetToken}`;
+    // usamos la URL del frontend (vercel) desde .env
+    const resetLink = `${process.env.FRONTEND_URL}/pages/resetp.html?token=${resetToken}`;
 
     // enviar correo
     const previewUrl = await sendMail(
@@ -135,14 +136,14 @@ const forgotPassword = async (req, res) => {
 // ======================================================
 const resetPassword = async (req, res) => {
   try {
-    const { token } = req.params;       // token enviado en la url
-    const { password } = req.body;      // nueva contraseña en JSON
+    const { token } = req.params;   // token desde la url
+    const { password } = req.body;  // nueva contraseña en el body
 
     if (!token) {
       return res.status(400).json({ message: "Token requerido" });
     }
 
-    // buscamos usuario con token válido y que no haya expirado
+    // buscamos usuario con token válido y no expirado
     const user = await User.findOne({
       resetPasswordToken: token,
       resetPasswordExpires: { $gt: Date.now() },
@@ -152,15 +153,14 @@ const resetPassword = async (req, res) => {
       return res.status(400).json({ message: "Token inválido o expirado" });
     }
 
-    // asignamos la nueva contraseña directamente
-    // el pre("save") del modelo se encargará de hacer hash
+    // asignamos nueva contraseña (el pre("save") hace el hash)
     user.password = password;
 
     // limpiamos campos de reset
     user.resetPasswordToken = undefined;
-    user.resetPasswordExpire = undefined;
+    user.resetPasswordExpires = undefined;
 
-    // guardamos los cambios en la base de datos
+    // guardamos cambios
     await user.save();
 
     res.json({ message: "Contraseña actualizada con éxito" });
@@ -169,9 +169,6 @@ const resetPassword = async (req, res) => {
     res.status(500).json({ message: "Error al restablecer contraseña" });
   }
 };
-
-module.exports = { resetPassword };
-
 
 // ======================================================
 // EXPORTAR FUNCIONES
