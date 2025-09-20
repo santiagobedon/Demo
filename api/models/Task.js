@@ -32,7 +32,6 @@ const TaskSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: ["Por hacer", "Haciendo", "Hecho"],
-    default: "Por hacer",
   },
   // referencia al usuario que creo la tarea (relacion con User)
   user: {

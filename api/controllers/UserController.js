@@ -71,5 +71,65 @@ const getUsers = async (req, res) => {
   }
 };
 
+// ======================================================
+// FUNCION PARA EDITAR PERFIL DE USUARIO
+// ======================================================
+// PUT /users/me
+// actualiza nombres, apellidos, edad y correo del usuario logueado
+const updateProfile = async (req, res) => {
+  try {
+    const { firstName, lastName, age, email } = req.body;
+
+    // validamos campos requeridos
+    if (!firstName || !lastName || !age || !email) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    // validación de edad mínima
+    if (age < 13) {
+      return res.status(400).json({ message: "Age must be at least 13" });
+    }
+
+    // validación de email con regex (RFC 5322 básico)
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ message: "Invalid email format" });
+    }
+
+    // verificamos que el correo no esté en uso por otro usuario
+    const existingUser = await User.findOne({
+      email,
+      _id: { $ne: req.userId }, // usamos req.userId en lugar de req.user.id
+    });
+
+    if (existingUser) {
+      return res.status(409).json({ message: "Email is already registered" });
+    }
+
+    // actualizamos perfil
+    const updatedUser = await User.findByIdAndUpdate(
+      req.userId, // siempre con req.userId
+      { firstName, lastName, age, email },
+      { new: true, runValidators: true }
+    ).select("-password -__v");
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // respuesta exitosa
+    res.status(200).json({
+      message: "Profile updated successfully",
+      updatedUser: {
+        ...updatedUser.toObject(),
+        updatedAt: updatedUser.updatedAt?.toISOString(),
+      },
+    });
+  } catch (err) {
+    console.error("updateProfile error:", err);
+    return res.status(500).json({ message: "Something went wrong" });
+  }
+};
+
 // exportamos funciones para usarlas en rutas
-module.exports = { signup, getUsers };
+module.exports = { signup, getUsers, updateProfile };

@@ -10,6 +10,7 @@ const routes = require("./routes/index"); // index.js dentro de /routes
 
 const app = express();
 
+
 // ======================================================
 // MIDDLEWARES
 // ======================================================
@@ -28,7 +29,8 @@ app.use(express.urlencoded({ extended: true }));
 const allowedOrigins = [
   "http://localhost:3000",             // front local
   "http://localhost:8000",             // otro puerto local si aplica
-  "https://demoooo-six.vercel.app"    // frontend en vercel
+  "https://demoooo-six.vercel.app",
+  "https://to-do-list-client-eight.vercel.app"    // frontend en vercel
 ];
 
 app.use(cors({
