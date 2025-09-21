@@ -171,6 +171,24 @@ const resetPassword = async (req, res) => {
 };
 
 // ======================================================
+// PERFIL DEL USUARIO LOGUEADO
+// ======================================================
+const getProfile = async (req, res) => {
+  try {
+    // buscamos el usuario por el id guardado en req.userId
+    const user = await User.findById(req.userId).select("-password");
+    if (!user) {
+      return res.status(404).json({ message: "Usuario no encontrado" });
+    }
+
+    res.json(user);
+  } catch (error) {
+    console.error("getProfile error:", error);
+    res.status(500).json({ message: "Error al obtener perfil" });
+  }
+};
+
+// ======================================================
 // EXPORTAR FUNCIONES
 // ======================================================
-module.exports = { login, logout, forgotPassword, resetPassword };
+module.exports = { login, logout, forgotPassword, resetPassword, getProfile };
