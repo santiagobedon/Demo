@@ -30,7 +30,8 @@ const allowedOrigins = [
   "http://localhost:3000",             // front local
   "http://localhost:8000",             // otro puerto local si aplica
   "https://demoooo-six.vercel.app",
-  "https://to-do-list-client-eight.vercel.app"    // frontend en vercel
+  "https://to-do-list-client-eight.vercel.app",
+  "http://localhost:5173"    // frontend en vercel
 ];
 
 app.use(cors({
