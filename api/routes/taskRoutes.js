@@ -29,5 +29,12 @@ router.get("/mytasks", authMiddleware, TaskController.getUserTasks);
 // esta ruta actualiza una tarea del usuario autenticado
 router.put("/:id", authMiddleware, TaskController.updateTask);
 
+// ======================================================
+// OBTENER UNA TAREA POR ID
+// ======================================================
+// GET /tasks/:id
+// esta ruta devuelve una sola tarea del usuario autenticado
+router.get("/:id", authMiddleware, TaskController.getTaskById);
+
 // exportamos el router para usarlo en index.js de rutas
 module.exports = router;

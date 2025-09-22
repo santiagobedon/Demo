@@ -10,30 +10,25 @@ const Task = require("../models/Task");
 // ======================================================
 const createTask = async (req, res) => {
   try {
-    // destructuramos title y detail desde el cuerpo de la solicitud
     const { title, detail, status } = req.body;
 
-    // validamos que el campo title exista
     if (!title) {
       return res.status(400).json({ message: "El campo title es obligatorio" });
     }
 
-    // generamos fecha y hora actual
     const now = new Date();
-    const date = now.toISOString().split("T")[0]; // yyyy-mm-dd
-    const time = now.toTimeString().split(" ")[0].slice(0, 5); // hh:mm
+    const date = now.toISOString().split("T")[0]; 
+    const time = now.toTimeString().split(" ")[0].slice(0, 5); 
 
-    // creamos la tarea usando el modelo Task
     const newTask = await Task.create({
-      title,                // titulo obligatorio
-      detail,               // detalle opcional
-      date,                 // fecha actual
-      time,                 // hora actual
-      status: status || "Por hacer",  // estado inicial
-      user: req.userId,     // asociamos la tarea al usuario logueado
+      title,
+      detail,
+      date,
+      time,
+      status: status || "Por hacer",
+      user: req.userId,
     });
 
-    // enviamos respuesta 201 con datos de la tarea creada
     res.status(201).json({
       message: "Tarea creada exitosamente",
       task: {
@@ -76,6 +71,29 @@ const getUserTasks = async (req, res) => {
 };
 
 // ======================================================
+// FUNCION PARA OBTENER UNA TAREA POR ID
+// ======================================================
+const getTaskById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const task = await Task.findOne({ _id: id, user: req.userId });
+
+    if (!task) {
+      return res.status(404).json({ message: "Tarea no encontrada" });
+    }
+
+    res.status(200).json(task);
+  } catch (err) {
+    console.error("getTaskById error:", err.message);
+    res.status(500).json({
+      message: "Error al obtener la tarea",
+      error: err.message,
+    });
+  }
+};
+
+// ======================================================
 // FUNCION PARA EDITAR UNA TAREA
 // ======================================================
 const updateTask = async (req, res) => {
@@ -83,12 +101,10 @@ const updateTask = async (req, res) => {
     const { id } = req.params;
     const { title, detail, date, time, status } = req.body;
 
-    // validar título obligatorio
     if (!title) {
       return res.status(400).json({ message: "El campo title es obligatorio" });
     }
 
-    // validar fecha futura (si se envía)
     if (date) {
       const today = new Date().toISOString().split("T")[0];
       if (date < today) {
@@ -96,19 +112,17 @@ const updateTask = async (req, res) => {
       }
     }
 
-    // buscar la tarea que pertenezca al usuario autenticado
     const task = await Task.findOne({ _id: id, user: req.userId });
     if (!task) {
       return res.status(404).json({ message: "Tarea no encontrada" });
     }
 
-    // actualizar campos
     task.title = title;
     task.detail = detail;
     task.date = date || task.date;
     task.time = time || task.time;
     task.status = status || task.status;
-    task.updatedAt = new Date().toISOString(); // guardamos en formato ISO-8601
+    task.updatedAt = new Date().toISOString();
 
     await task.save();
 
@@ -136,4 +150,4 @@ const updateTask = async (req, res) => {
 // ======================================================
 // EXPORTAR FUNCIONES
 // ======================================================
-module.exports = { createTask, getUserTasks, updateTask };
+module.exports = { createTask, getUserTasks, getTaskById, updateTask };
