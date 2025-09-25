@@ -10,15 +10,13 @@ const Task = require("../models/Task");
 // ======================================================
 const createTask = async (req, res) => {
   try {
-    const { title, detail, status } = req.body;
+    const { title, detail, status, date, time } = req.body;
 
-    if (!title) {
-      return res.status(400).json({ message: "El campo title es obligatorio" });
+    if (!title || !date || !time) {
+      return res.status(400).json({ message: "Los campos title, date y time son obligatorios" });
     }
 
-    const now = new Date();
-    const date = now.toISOString().split("T")[0]; 
-    const time = now.toTimeString().split(" ")[0].slice(0, 5); 
+
 
     const newTask = await Task.create({
       title,
@@ -146,8 +144,34 @@ const updateTask = async (req, res) => {
     });
   }
 };
+// ======================================================
+// FUNCION PARA ELIMINAR UNA TAREA
+// ======================================================
+const deleteTask = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // buscar la tarea del usuario
+    const task = await Task.findOne({ _id: id, user: req.userId });
+    if (!task) {
+      return res.status(404).json({ message: "La tarea ya no está disponible" });
+    }
+
+    // eliminar de la base de datos
+    await task.deleteOne();
+
+    // respondemos con 204 sin contenido
+    return res.status(204).send();
+  } catch (err) {
+    console.error("deleteTask error:", err.message);
+    return res.status(500).json({
+      message: "No pudimos eliminar la tarea, inténtalo más tarde",
+      error: process.env.NODE_ENV === "development" ? err.message : undefined,
+    });
+  }
+};
 
 // ======================================================
 // EXPORTAR FUNCIONES
 // ======================================================
-module.exports = { createTask, getUserTasks, getTaskById, updateTask };
+module.exports = { createTask, getUserTasks, getTaskById, updateTask, deleteTask };

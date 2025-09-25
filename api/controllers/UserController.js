@@ -4,6 +4,8 @@
 
 // importamos modelo User para interactuar con la base de datos
 const User = require("../models/User");
+const Task = require("../models/Task");
+const bcrypt = require("bcrypt");
 
 // ======================================================
 // FUNCION PARA REGISTRAR USUARIO (SIGNUP)
@@ -130,6 +132,46 @@ const updateProfile = async (req, res) => {
     return res.status(500).json({ message: "Something went wrong" });
   }
 };
+// ======================================================
+// FUNCION PARA ELIMINAR USUARIO Y SUS TAREAS
+// ======================================================
+const deleteAccount = async (req, res) => {
+  try {
+    const { password, confirm } = req.body;
+
+    // validar confirmacion
+    if (confirm !== "ELIMINAR") {
+      return res.status(400).json({ message: "Debes escribir ELIMINAR para confirmar" });
+    }
+
+    // buscamos usuario
+    const user = await User.findById(req.userId);
+    if (!user) {
+      return res.status(404).json({ message: "Cuenta no encontrada" });
+    }
+
+    // validamos contraseña
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Contraseña incorrecta" });
+    }
+
+    // eliminamos tareas asociadas
+    await Task.deleteMany({ user: req.userId });
+
+    // eliminamos usuario
+    await user.deleteOne();
+
+    // respondemos con 204 sin contenido
+    return res.status(204).send();
+  } catch (err) {
+    console.error("deleteAccount error:", err.message);
+    return res.status(500).json({
+      message: "No pudimos eliminar la cuenta, inténtalo más tarde",
+      error: process.env.NODE_ENV === "development" ? err.message : undefined,
+    });
+  }
+};
 
 // exportamos funciones para usarlas en rutas
-module.exports = { signup, getUsers, updateProfile };
+module.exports = { signup, getUsers, updateProfile, deleteAccount };

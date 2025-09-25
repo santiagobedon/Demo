@@ -29,6 +29,12 @@ router.get("/", UserController.getUsers);
 // PUT /users/me
 // actualiza datos del usuario logueado (nombres, apellidos, edad y correo)
 router.put("/me", authMiddleware, UserController.updateProfile);
+// ======================================================
+// ELIMINAR CUENTA DE USUARIO
+// ======================================================
+// DELETE /users/me
+// eliminar cuenta autenticada
+router.delete("/me", authMiddleware, UserController.deleteAccount);
 
 // exportamos el router para usarlo en index.js de rutas
 module.exports = router;

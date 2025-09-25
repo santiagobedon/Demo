@@ -35,6 +35,13 @@ router.put("/:id", authMiddleware, TaskController.updateTask);
 // GET /tasks/:id
 // esta ruta devuelve una sola tarea del usuario autenticado
 router.get("/:id", authMiddleware, TaskController.getTaskById);
+// ======================================================
+// ELIMINAR UNA TAREA POR ID
+// ======================================================
+// DELETE /tasks/:id
+// esta ruta elimina una sola tarea del usuario autenticado
+router.delete("/:id", authMiddleware, TaskController.deleteTask);
+
 
 // exportamos el router para usarlo en index.js de rutas
 module.exports = router;
