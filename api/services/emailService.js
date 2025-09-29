@@ -1,39 +1,35 @@
 // ======================================================
-// SERVICIO DE ENVÍO DE CORREOS CON NODemailer
+// SERVICIO DE ENVÍO DE CORREOS CON SENDGRID
 // ======================================================
 
-const nodemailer = require("nodemailer");
+const sgMail = require("@sendgrid/mail");
 
-// configuramos el transporter directamente con tu cuenta real
-const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST,    // ejemplo: smtp.gmail.com
-  port: process.env.EMAIL_PORT,    // ejemplo: 587
-  secure: false,                   // true si usas puerto 465
-  auth: {
-    user: process.env.EMAIL_USER,  // tu correo real
-    pass: process.env.EMAIL_PASS,  // contraseña de app de Gmail
-  },
-});
+// seteamos la API key desde .env
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 // ======================================================
 // FUNCION PARA ENVIAR CORREOS
 // ======================================================
 const sendMail = async (to, subject, html) => {
   try {
-    const info = await transporter.sendMail({
-      from: `"Soporte ToDoList" <${process.env.EMAIL_USER}>`,
+    const msg = {
       to,
+      from: {
+        email: process.env.EMAIL_FROM, // remitente verificado en SendGrid
+        name: "Soporte ToDoList",      // nombre visible en el correo
+      },
       subject,
       html,
-    });
+    };
 
-    console.log("📧 mensaje enviado: %s", info.messageId);
-    return info.messageId; // ya no usamos Ethereal
+    const info = await sgMail.send(msg);
+
+    console.log("📧 correo enviado a:", to);
+    return info;
   } catch (err) {
-    console.error("Error enviando correo:", err);
+    console.error("Error enviando correo con SendGrid:", err);
     throw err;
   }
 };
 
 module.exports = { sendMail };
-
