@@ -1,83 +1,89 @@
 // ======================================================
-// SERVIDOR PRINCIPAL (app.js)
+// MAIN SERVER (app.js)
 // ======================================================
 
 const express = require("express");
 require("dotenv").config();
 const cors = require("cors");
 const { connectDB } = require("./config/database");
-const routes = require("./routes/index"); // index.js dentro de /routes
+const routes = require("./routes/index"); // main router index.js
 
 const app = express();
-
 
 // ======================================================
 // MIDDLEWARES
 // ======================================================
 
-// parsear JSON en el cuerpo de las solicitudes
+// parse incoming JSON requests
 app.use(express.json());
 
-// parsear datos codificados en URL (formularios)
+// parse URL-encoded data (form submissions)
 app.use(express.urlencoded({ extended: true }));
 
 // ======================================================
-// CONFIGURACION DE CORS
+// CORS CONFIGURATION
 // ======================================================
 
-// reemplaza esta URL por la de tu frontend en Vercel
+// allowed origins for CORS
+// replace these URLs with your frontend URLs
 const allowedOrigins = [
-  "http://localhost:3000",             // front local
-  "http://localhost:8000",             // otro puerto local si aplica
+  "http://localhost:3000",
+  "http://localhost:8000",
   "https://demoooo-six.vercel.app",
   "https://to-do-list-client-eight.vercel.app",
-  "http://localhost:5173"    // frontend en vercel
+  "http://localhost:5173"
 ];
 
 app.use(cors({
   origin: function(origin, callback) {
-    // permitir solicitudes sin origin (ej: Postman)
+    // allow requests with no origin (e.g., Postman)
     if (!origin) return callback(null, true);
     if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = `La URL ${origin} no está permitida por CORS`;
+      const msg = `The URL ${origin} is not allowed by CORS`;
       return callback(new Error(msg), false);
     }
     return callback(null, true);
   },
-  credentials: true // si planeas usar cookies
+  credentials: true // allow cookies if needed
 }));
 
 // ======================================================
-// RUTA BASICA DE TEST
+// BASIC TEST ROUTE
 // ======================================================
-
+/**
+ * GET /
+ * 
+ * Returns a simple message to verify the server is running.
+ * Response:
+ *   - 200: "Server is running"
+ */
 app.get("/", (req, res) => res.send("Server is running"));
 
 // ======================================================
-// RUTAS DE LA API
+// API ROUTES
 // ======================================================
-
+/**
+ * Prefix all routes with /api/v1
+ * e.g., /api/v1/users, /api/v1/auth, /api/v1/tasks
+ */
 app.use("/api/v1", routes);
 
 // ======================================================
-// CONEXION A LA BASE DE DATOS
+// DATABASE CONNECTION
 // ======================================================
-
-connectDB();
+connectDB(); // connect to MongoDB using connection string from .env
 
 // ======================================================
-// PUERTO DE ESCUCHA
+// SERVER LISTEN PORT
 // ======================================================
-
 if (require.main === module) {
   const PORT = process.env.PORT || 3000;
   app.listen(PORT, () => {
-    console.log(` server running on http://localhost:${PORT}`);
+    console.log(`Server running on http://localhost:${PORT}`);
   });
 }
 
 // ======================================================
-// EXPORTAR APP
+// EXPORT APP
 // ======================================================
-
 module.exports = app;

@@ -1,21 +1,21 @@
 // ======================================================
-// CONTROLADOR DE AUTENTICACION
+// AUTHENTICATION CONTROLLER
 // ======================================================
 
-// importamos modelo de usuario para consultas a la DB
+// import user model for db queries
 const User = require("../models/User");
-// importamos jsonwebtoken para crear/verificar tokens JWT
+// import jsonwebtoken to create/verify jwt tokens
 const jwt = require("jsonwebtoken");
-// randomUUID para generar identificadores únicos de tokens
+// randomUUID to generate unique token identifiers
 const { randomUUID } = require("crypto");
-// crypto para generar tokens de recuperación seguros
+// crypto to generate secure recovery tokens
 const crypto = require("crypto");
-// modelo para tokens revocados (logout)
+// model for revoked tokens (logout)
 const RevokedToken = require("../models/RevokedToken");
-// bcrypt para hashear y comparar contraseñas
+// bcrypt to hash and compare passwords
 const bcrypt = require("bcrypt");
 
-// servicio para enviar correos
+// email service
 const { sendMail } = require("../services/emailService");
 
 // ======================================================
@@ -25,35 +25,35 @@ const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // validamos que los campos existan
+    // validate required fields
     if (!email || !password)
-      return res.status(400).json({ message: "Todos los campos son requeridos" });
+      return res.status(400).json({ message: "All fields are required" });
 
-    // buscamos el usuario por email
+    // find user by email
     const user = await User.findOne({ email });
     if (!user)
-      return res.status(401).json({ message: "Correo o contraseña inválidos" });
+      return res.status(401).json({ message: "Invalid email or password" });
 
-    // verificamos la contraseña
+    // verify password using comparePassword method from model
     const isMatch = await user.comparePassword(password);
     if (!isMatch)
-      return res.status(401).json({ message: "Correo o contraseña inválidos" });
+      return res.status(401).json({ message: "Invalid email or password" });
 
-    // generamos un identificador unico para el token (jti)
+    // generate unique identifier for jwt (jti)
     const jti = randomUUID();
 
-    // generamos token JWT con 2 horas de expiración
+    // generate jwt with 2h expiration time
     const token = jwt.sign(
       { id: user._id.toString(), email: user.email },
       process.env.JWT_SECRET,
       { expiresIn: "2h", jwtid: jti }
     );
 
-    // respondemos con mensaje y token
-    res.json({ message: "Login exitoso", token });
+    // respond with success message and token
+    res.json({ message: "Login successful", token });
   } catch (err) {
     console.error("login error:", err);
-    res.status(500).json({ message: "Inténtalo de nuevo más tarde" });
+    res.status(500).json({ message: "Please try again later" });
   }
 };
 
@@ -62,133 +62,134 @@ const login = async (req, res) => {
 // ======================================================
 const logout = async (req, res) => {
   try {
-    // obtenemos token del header Authorization
+    // extract token from authorization header
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return res.status(400).json({ message: "No token proporcionado" });
+      return res.status(400).json({ message: "No token provided" });
     }
 
     const token = authHeader.split(" ")[1];
     const decoded = jwt.decode(token);
 
-    // guardamos el jti en la colección de tokens revocados
+    // save jti into revoked tokens collection with expiration
     if (decoded && decoded.jti && decoded.exp) {
       const expiresAt = new Date(decoded.exp * 1000);
       await RevokedToken.create({ jti: decoded.jti, expiresAt });
     }
 
-    res.status(200).json({ message: "Sesión cerrada correctamente" });
+    res.status(200).json({ message: "Session closed successfully" });
   } catch (err) {
     console.error("logout error:", err.message);
-    res.status(500).json({ message: "Error al cerrar sesión" });
+    res.status(500).json({ message: "Logout error" });
   }
 };
 
 // ======================================================
-// OLVIDO DE CONTRASEÑA
+// FORGOT PASSWORD
 // ======================================================
 const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
 
+    // check if user exists
     const user = await User.findOne({ email });
     if (!user) {
-      // siempre respondemos igual para no filtrar emails
-      return res.status(202).json({ message: "Si el correo existe, recibirás un enlace" });
+      // always return same response to prevent email leaks
+      return res.status(202).json({ message: "If the email exists, you will receive a link" });
     }
 
-    // generar token seguro
+    // generate secure reset token
     const resetToken = crypto.randomBytes(32).toString("hex");
 
-    // expiración 1 hora
+    // set expiration (1 hour)
     const resetPasswordExpires = Date.now() + 3600000;
 
-    // guardar token y expiración en el usuario
+    // save reset token and expiration in user record
     user.resetPasswordToken = resetToken;
     user.resetPasswordExpires = resetPasswordExpires;
 
     await user.save();
 
-    // usamos la URL del frontend (vercel) desde .env
+    // build reset link using frontend url from .env
     const resetLink = `${process.env.FRONTEND_URL}/pages/resetp.html?token=${resetToken}`;
 
-    // enviar correo
+    // send email with reset link
     const previewUrl = await sendMail(
       user.email,
-      "Recuperación de contraseña",
-      `<p>Haz clic aquí para restablecer tu contraseña:</p>
+      "Password recovery",
+      `<p>Click here to reset your password:</p>
        <a href="${resetLink}">${resetLink}</a>
-       <p>El enlace expira en 1 hora.</p>`
+       <p>The link expires in 1 hour.</p>`
     );
 
     res.json({
-      message: "Revisa tu correo para continuar",
+      message: "Check your email to continue",
       previewUrl,
     });
   } catch (error) {
     console.error("forgotPassword error:", error);
-    res.status(500).json({ message: "Error en forgot password" });
+    res.status(500).json({ message: "Error in forgot password process" });
   }
 };
 
 // ======================================================
-// RESETEAR CONTRASEÑA
+// RESET PASSWORD
 // ======================================================
 const resetPassword = async (req, res) => {
   try {
-    const { token } = req.params;   // token desde la url
-    const { password } = req.body;  // nueva contraseña en el body
+    const { token } = req.params;   // token from url
+    const { password } = req.body;  // new password from body
 
     if (!token) {
-      return res.status(400).json({ message: "Token requerido" });
+      return res.status(400).json({ message: "Token required" });
     }
 
-    // buscamos usuario con token válido y no expirado
+    // find user with valid (not expired) token
     const user = await User.findOne({
       resetPasswordToken: token,
       resetPasswordExpires: { $gt: Date.now() },
     });
 
     if (!user) {
-      return res.status(400).json({ message: "Token inválido o expirado" });
+      return res.status(400).json({ message: "Invalid or expired token" });
     }
 
-    // asignamos nueva contraseña (el pre("save") hace el hash)
+    // assign new password (hashing is handled in pre("save"))
     user.password = password;
 
-    // limpiamos campos de reset
+    // clear reset fields
     user.resetPasswordToken = undefined;
     user.resetPasswordExpires = undefined;
 
-    // guardamos cambios
+    // save updated user
     await user.save();
 
-    res.json({ message: "Contraseña actualizada con éxito" });
+    res.json({ message: "Password updated successfully" });
   } catch (error) {
     console.error("resetPassword error:", error);
-    res.status(500).json({ message: "Error al restablecer contraseña" });
+    res.status(500).json({ message: "Error resetting password" });
   }
 };
 
 // ======================================================
-// PERFIL DEL USUARIO LOGUEADO
+// GET PROFILE OF LOGGED-IN USER
 // ======================================================
 const getProfile = async (req, res) => {
   try {
-    // buscamos el usuario por el id guardado en req.userId
+    // find user by id stored in req.userId (set by auth middleware)
     const user = await User.findById(req.userId).select("-password");
     if (!user) {
-      return res.status(404).json({ message: "Usuario no encontrado" });
+      return res.status(404).json({ message: "User not found" });
     }
 
     res.json(user);
   } catch (error) {
     console.error("getProfile error:", error);
-    res.status(500).json({ message: "Error al obtener perfil" });
+    res.status(500).json({ message: "Error retrieving profile" });
   }
 };
 
 // ======================================================
-// EXPORTAR FUNCIONES
+// EXPORT FUNCTIONS
 // ======================================================
 module.exports = { login, logout, forgotPassword, resetPassword, getProfile };

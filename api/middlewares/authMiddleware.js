@@ -1,53 +1,64 @@
 // ======================================================
-// MIDDLEWARE DE AUTENTICACION
+// AUTHENTICATION MIDDLEWARE WITH TOKEN REVOCATION
 // ======================================================
 
-// importamos jsonwebtoken para verificar tokens JWT
+// import jsonwebtoken to verify JWT tokens
 const jwt = require("jsonwebtoken");
 
-// importamos el modelo de tokens revocados (blacklist)
+// import RevokedToken model to check blacklist (revoked tokens)
 const RevokedToken = require("../models/RevokedToken");
 
-// middleware para proteger rutas verificando el token en el header Authorization
+/**
+ * Middleware to protect routes by verifying JWT token and checking if token is revoked.
+ * 
+ * req.headers.authorization (string, required): Authorization header in format "Bearer <token>"
+ * 
+ * Adds to req:
+ *   - req.user (object): full decoded payload from token (e.g., { id, email, jti, ... })
+ *   - req.userId (string): shortcut for user id
+ * 
+ * Behavior:
+ *   - Returns 401 if no token is provided or token is revoked
+ *   - Returns 403 if token is invalid or expired
+ *   - Calls next() if token is valid and not revoked
+ */
 const authMiddleware = async (req, res, next) => {
   try {
-    // obtenemos el header Authorization
+    // get Authorization header
     const authHeader = req.headers["authorization"];
 
-    // validamos que exista y que empiece con "Bearer "
+    // validate header format
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return res.status(401).json({ message: "No autorizado: falta token" });
+      return res.status(401).json({ message: "Unauthorized: token missing" });
     }
 
-    // extraemos el token del header (Bearer token)
+    // extract token from header
     const token = authHeader.split(" ")[1];
 
-    // verificamos el token usando la clave secreta del .env
+    // verify token using secret key from environment
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     // ======================================================
-    // NUEVO: validamos si el token ha sido revocado (logout)
+    // CHECK IF TOKEN HAS BEEN REVOKED (LOGOUT)
     // ======================================================
     if (decoded.jti) {
-      // buscamos el jti en la blacklist
       const revoked = await RevokedToken.findOne({ jti: decoded.jti }).lean();
       if (revoked) {
-        return res.status(401).json({ message: "Token inválido (revocado)" });
+        return res.status(401).json({ message: "Invalid token (revoked)" });
       }
     }
 
-    // agregamos la info decodificada al request
-    req.user = decoded;        // objeto completo (id, email, jti, etc.)
-    req.userId = decoded.id;   // acceso rápido al id del usuario
+    // attach decoded info to request
+    req.user = decoded;        // full decoded payload
+    req.userId = decoded.id;   // shortcut for user id
 
-    // continuamos con la siguiente funcion de la ruta
+    // continue to next middleware or route handler
     next();
   } catch (err) {
-    // en caso de error (token invalido o expirado)
-    console.error("Error en authMiddleware:", err.message);
-    return res.status(403).json({ message: "Token inválido o expirado" });
+    console.error("authMiddleware error:", err.message);
+    return res.status(403).json({ message: "Invalid or expired token" });
   }
 };
 
-// exportamos el middleware para usarlo en rutas protegidas
+// export middleware for protected routes
 module.exports = authMiddleware;

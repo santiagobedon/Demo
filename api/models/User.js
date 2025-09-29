@@ -1,11 +1,28 @@
 // ======================================================
-// MODELO DE USUARIOS (User)
+// USER MODEL
 // ======================================================
 
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 
-// definimos el esquema de la colección User
+/**
+ * Schema for a User document.
+ * 
+ * Fields:
+ *   - firstName (string, required, min 2, trimmed): user's first name
+ *   - lastName (string, required, min 2, trimmed): user's last name
+ *   - age (number, required, min 13): user's age
+ *   - email (string, required, unique, lowercase, trimmed, regex validated): user's email
+ *   - password (string, required, min 8, regex validated): password including uppercase, lowercase, number, special character
+ * 
+ *   - resetPasswordToken (string, optional, default=null): temporary token for password recovery
+ *   - resetPasswordExpires (Date, optional, default=null): expiration date of reset token
+ * 
+ * Options:
+ *   - timestamps: automatically add createdAt and updatedAt
+ */
+
+// define schema
 const userSchema = new mongoose.Schema(
   {
     firstName: {
@@ -33,7 +50,6 @@ const userSchema = new mongoose.Schema(
       trim: true,
       match: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Invalid email format"],
     },
-
     password: {
       type: String,
       required: [true, "Password is required"],
@@ -48,27 +64,26 @@ const userSchema = new mongoose.Schema(
           "Password must include uppercase, lowercase, number and special character",
       },
     },
-
     // ======================================================
-    // CAMPOS EXTRA PARA RECUPERACIÓN DE CONTRASEÑA
+    // EXTRA FIELDS FOR PASSWORD RECOVERY
     // ======================================================
     resetPasswordToken: {
       type: String,
-      default: null, // token temporal de recuperación
+      default: null, // temporary token
     },
     resetPasswordExpires: {
       type: Date,
-      default: null, // fecha de expiración del token
+      default: null, // token expiration date
     },
   },
   { timestamps: true }
 );
 
 // ======================================================
-// HASH DE CONTRASEÑA ANTES DE GUARDAR
+// PASSWORD HASH BEFORE SAVE
 // ======================================================
 userSchema.pre("save", async function (next) {
-  // solo hash si la contraseña fue modificada
+  // only hash if password was modified
   if (!this.isModified("password")) return next();
   try {
     const salt = await bcrypt.genSalt(10);
@@ -80,14 +95,14 @@ userSchema.pre("save", async function (next) {
 });
 
 // ======================================================
-// METODO PARA COMPARAR CONTRASEÑAS
+// METHOD TO COMPARE PASSWORDS
 // ======================================================
 userSchema.methods.comparePassword = async function (candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };
 
 // ======================================================
-// EXPORTAR MODELO
+// EXPORT MODEL
 // ======================================================
 const User = mongoose.model("User", userSchema);
 module.exports = User;

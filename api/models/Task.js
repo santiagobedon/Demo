@@ -1,50 +1,54 @@
 // ======================================================
-// MODELO DE TAREAS (Task)
+// TASK MODEL
 // ======================================================
 
 const mongoose = require("mongoose");
 
-// definimos el esquema de la colección Task
+/**
+ * Schema for a Task document.
+ * 
+ * Fields:
+ *   - title (string, required, max 50): task title
+ *   - detail (string, optional, max 500): task details
+ *   - date (string, default=current date yyyy-mm-dd): task date
+ *   - time (string, default=current time hh:mm): task time
+ *   - status (string, enum=["Por hacer","Haciendo","Hecho"], default="Por hacer"): task status
+ *   - user (ObjectId, ref="User", required): reference to the user who created the task
+ *   - createdAt (Date, default=now): document creation date
+ */
 const TaskSchema = new mongoose.Schema({
-  // titulo de la tarea (obligatorio, maximo 50 caracteres)
   title: {
     type: String,
     required: true,
     maxlength: 50,
   },
-  // detalle de la tarea (opcional, maximo 500 caracteres)
   detail: {
     type: String,
     maxlength: 500,
   },
-  // fecha de la tarea (yyyy-mm-dd), por defecto la fecha actual
   date: {
     type: String,
-    default: () => new Date().toISOString().split("T")[0]
+    default: () => new Date().toISOString().split("T")[0], // yyyy-mm-dd
   },
-  // hora de la tarea (hh:mm), por defecto la hora actual
   time: {
     type: String,
-    default: () => new Date().toISOString().split("T")[1].substring(0,5)
+    default: () => new Date().toISOString().split("T")[1].substring(0,5), // hh:mm
   },
-  // estado de la tarea, valores permitidos: Por hacer, Haciendo, Hecho
-  // por defecto es "Por hacer"
   status: {
     type: String,
     enum: ["Por hacer", "Haciendo", "Hecho"],
+    default: "Por hacer",
   },
-  // referencia al usuario que creo la tarea (relacion con User)
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
     required: true,
   },
-  // fecha de creacion del documento
   createdAt: {
     type: Date,
     default: Date.now,
   },
 });
 
-// exportamos el modelo para usarlo en controladores y rutas
+// export Task model for use in controllers and routes
 module.exports = mongoose.model("Task", TaskSchema);

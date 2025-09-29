@@ -1,33 +1,45 @@
 // ======================================================
-// MIDDLEWARE DE AUTENTICACION
+// AUTHENTICATION MIDDLEWARE
 // ======================================================
 
-// importamos jsonwebtoken para verificar tokens JWT
+// import jsonwebtoken to verify JWT tokens
 const jwt = require("jsonwebtoken");
 
-// middleware para proteger rutas, verificando token
+/**
+ * Middleware to protect routes by verifying JWT token.
+ * 
+ * req.cookies?.token (string, optional): token stored in cookies
+ * req.headers.authorization (string, optional): Authorization header in format "Bearer <token>"
+ * 
+ * Adds:
+ *   - req.user (object): decoded user information from token payload (e.g., { id, email })
+ * 
+ * Calls next() if token is valid.
+ * Returns 401 Unauthorized if no token is provided or token is invalid/expired.
+ */
 const authMiddleware = (req, res, next) => {
-  // obtenemos el token desde cookies o desde el header Authorization (Bearer token)
+  // get token from cookies or Authorization header
   const token = req.cookies?.token || req.headers.authorization?.split(" ")[1];
 
-  // si no hay token, devolvemos error 401 (no autorizado)
-  if (!token) return res.status(401).json({ message: "No autorizado" });
+  if (!token) {
+    // respond with 401 if no token
+    return res.status(401).json({ message: "Not authorized" });
+  }
 
   try {
-    // verificamos el token usando la clave secreta del .env
+    // verify token using secret key from environment
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // agregamos la info del usuario decodificada al request
-    // req.user tendra { id, email } u otros datos que hayas puesto en el payload
+    // attach decoded user info to request object
     req.user = decoded;
 
-    // llamamos a next() para continuar con la siguiente función de la ruta
+    // continue to next middleware or route handler
     next();
   } catch (err) {
-    // si el token es inválido o expiró, devolvemos 401
-    return res.status(401).json({ message: "Token inválido o expirado" });
+    // token is invalid or expired
+    return res.status(401).json({ message: "Invalid or expired token" });
   }
 };
 
-// exportamos el middleware para usarlo en rutas protegidas
+// export middleware for use in protected routes
 module.exports = authMiddleware;

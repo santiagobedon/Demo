@@ -1,22 +1,32 @@
 // ======================================================
-// CONTROLADOR DE TAREAS
+// TASK CONTROLLER
 // ======================================================
 
-// importamos el modelo de Task para interactuar con la base de datos
+// import the Task model to interact with the database
 const Task = require("../models/Task");
 
 // ======================================================
-// FUNCION PARA CREAR UNA TAREA
+// CREATE TASK
 // ======================================================
+/**
+ * Creates a new task for the authenticated user.
+ * 
+ * req.body:
+ *   - title (string, required): title of the task
+ *   - detail (string, optional): additional details for the task
+ *   - status (string, optional): current status of the task (default: "Por hacer")
+ *   - date (string, required): due date in YYYY-MM-DD format
+ *   - time (string, required): due time in HH:MM format
+ * 
+ * req.userId (string): authenticated user's id (set by auth middleware)
+ */
 const createTask = async (req, res) => {
   try {
     const { title, detail, status, date, time } = req.body;
 
     if (!title || !date || !time) {
-      return res.status(400).json({ message: "Los campos title, date y time son obligatorios" });
+      return res.status(400).json({ message: "Title, date, and time are required" });
     }
-
-
 
     const newTask = await Task.create({
       title,
@@ -28,7 +38,7 @@ const createTask = async (req, res) => {
     });
 
     res.status(201).json({
-      message: "Tarea creada exitosamente",
+      message: "Task created successfully",
       task: {
         id: newTask._id,
         title: newTask.title,
@@ -42,35 +52,55 @@ const createTask = async (req, res) => {
   } catch (err) {
     console.error("createTask error:", err.message);
     res.status(500).json({
-      message: "No pudimos guardar tu tarea, inténtalo de nuevo",
+      message: "Unable to save task, please try again",
       error: err.message,
     });
   }
 };
 
 // ======================================================
-// FUNCION PARA OBTENER TODAS LAS TAREAS DEL USUARIO
+// GET ALL TASKS OF USER
 // ======================================================
+/**
+ * Retrieves all tasks of the authenticated user.
+ * 
+ * req.userId (string): authenticated user's id (set by auth middleware)
+ * 
+ * Returns:
+ *   - message (string): status message
+ *   - tasks (array): list of task objects
+ */
 const getUserTasks = async (req, res) => {
   try {
     const tasks = await Task.find({ user: req.userId }).lean();
 
     res.status(200).json({
-      message: "Tareas obtenidas exitosamente",
+      message: "Tasks retrieved successfully",
       tasks,
     });
   } catch (err) {
     console.error("getUserTasks error:", err.message);
     res.status(500).json({
-      message: "No pudimos obtener las tareas, inténtalo de nuevo",
+      message: "Unable to retrieve tasks, please try again",
       error: err.message,
     });
   }
 };
 
 // ======================================================
-// FUNCION PARA OBTENER UNA TAREA POR ID
+// GET TASK BY ID
 // ======================================================
+/**
+ * Retrieves a single task by ID for the authenticated user.
+ * 
+ * req.params:
+ *   - id (string, required): task's unique identifier
+ * 
+ * req.userId (string): authenticated user's id (set by auth middleware)
+ * 
+ * Returns:
+ *   - task (object): task object if found
+ */
 const getTaskById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -78,41 +108,60 @@ const getTaskById = async (req, res) => {
     const task = await Task.findOne({ _id: id, user: req.userId });
 
     if (!task) {
-      return res.status(404).json({ message: "Tarea no encontrada" });
+      return res.status(404).json({ message: "Task not found" });
     }
 
     res.status(200).json(task);
   } catch (err) {
     console.error("getTaskById error:", err.message);
     res.status(500).json({
-      message: "Error al obtener la tarea",
+      message: "Error retrieving task",
       error: err.message,
     });
   }
 };
 
 // ======================================================
-// FUNCION PARA EDITAR UNA TAREA
+// UPDATE TASK
 // ======================================================
+/**
+ * Updates an existing task by ID for the authenticated user.
+ * 
+ * req.params:
+ *   - id (string, required): task's unique identifier
+ * 
+ * req.body:
+ *   - title (string, required): new title of the task
+ *   - detail (string, optional): updated details
+ *   - date (string, optional): updated due date (must be today or future)
+ *   - time (string, optional): updated due time
+ *   - status (string, optional): updated status
+ * 
+ * req.userId (string): authenticated user's id (set by auth middleware)
+ * 
+ * Returns:
+ *   - message (string): status message
+ *   - task (object): updated task object
+ */
 const updateTask = async (req, res) => {
   try {
     const { id } = req.params;
     const { title, detail, date, time, status } = req.body;
 
     if (!title) {
-      return res.status(400).json({ message: "El campo title es obligatorio" });
+      return res.status(400).json({ message: "Title is required" });
     }
 
     if (date) {
       const today = new Date().toISOString().split("T")[0];
       if (date < today) {
-        return res.status(400).json({ message: "La fecha debe ser futura" });
+        return res.status(400).json({ message: "Date must be in the future" });
       }
     }
 
     const task = await Task.findOne({ _id: id, user: req.userId });
     if (!task) {
-      return res.status(404).json({ message: "Tarea no encontrada" });
+      return res.status(404).json({ message: "Task not found" });
     }
 
     task.title = title;
@@ -125,7 +174,7 @@ const updateTask = async (req, res) => {
     await task.save();
 
     res.status(200).json({
-      message: "Tarea actualizada",
+      message: "Task updated successfully",
       task: {
         id: task._id,
         title: task.title,
@@ -139,39 +188,51 @@ const updateTask = async (req, res) => {
   } catch (err) {
     console.error("updateTask error:", err.message);
     res.status(500).json({
-      message: "No pudimos actualizar tu tarea",
+      message: "Unable to update task",
       error: process.env.NODE_ENV === "development" ? err.message : undefined,
     });
   }
 };
+
 // ======================================================
-// FUNCION PARA ELIMINAR UNA TAREA
+// DELETE TASK
 // ======================================================
+/**
+ * Deletes a task by ID for the authenticated user.
+ * 
+ * req.params:
+ *   - id (string, required): task's unique identifier
+ * 
+ * req.userId (string): authenticated user's id (set by auth middleware)
+ * 
+ * Returns:
+ *   - 204 No Content if task is deleted successfully
+ */
 const deleteTask = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // buscar la tarea del usuario
     const task = await Task.findOne({ _id: id, user: req.userId });
     if (!task) {
-      return res.status(404).json({ message: "La tarea ya no está disponible" });
+      return res.status(404).json({ message: "Task no longer available" });
     }
 
-    // eliminar de la base de datos
     await task.deleteOne();
 
-    // respondemos con 204 sin contenido
     return res.status(204).send();
   } catch (err) {
     console.error("deleteTask error:", err.message);
     return res.status(500).json({
-      message: "No pudimos eliminar la tarea, inténtalo más tarde",
+      message: "Unable to delete task, please try later",
       error: process.env.NODE_ENV === "development" ? err.message : undefined,
     });
   }
 };
 
 // ======================================================
-// EXPORTAR FUNCIONES
+// EXPORT FUNCTIONS
 // ======================================================
+/**
+ * Export all task controller functions to be used in routes
+ */
 module.exports = { createTask, getUserTasks, getTaskById, updateTask, deleteTask };

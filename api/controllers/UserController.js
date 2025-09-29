@@ -1,70 +1,81 @@
 // ======================================================
-// CONTROLADOR DE USUARIOS
+// USER CONTROLLER
 // ======================================================
 
-// importamos modelo User para interactuar con la base de datos
+// import User and Task models to interact with the database
 const User = require("../models/User");
 const Task = require("../models/Task");
 const bcrypt = require("bcrypt");
 
 // ======================================================
-// FUNCION PARA REGISTRAR USUARIO (SIGNUP)
+// SIGNUP (REGISTER USER)
 // ======================================================
+/**
+ * Registers a new user in the system.
+ * 
+ * req.body:
+ *   - firstName (string, required): user's first name
+ *   - lastName (string, required): user's last name
+ *   - age (number, required): user's age (minimum 13)
+ *   - email (string, required): user's email (must be unique)
+ *   - password (string, required): user's password
+ *   - confirmPassword (string, required): must match password
+ * 
+ * Returns:
+ *   - id (string): newly created user's id
+ *   - message (string): success message
+ */
 const signup = async (req, res) => {
   try {
     const { firstName, lastName, age, email, password, confirmPassword } = req.body;
 
-    // validamos que ningun campo este vacío
     if (!firstName || !lastName || !age || !email || !password || !confirmPassword) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    // edad mínima 13 años
     if (age < 13) {
       return res.status(400).json({ message: "Age must be at least 13" });
     }
 
-    // password y confirmPassword deben coincidir
     if (password !== confirmPassword) {
       return res.status(400).json({ message: "Passwords do not match" });
     }
 
-    // verificamos si email ya existe
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(409).json({ message: "Email is already registered" });
     }
 
-    // creamos nuevo usuario
     const newUser = new User({ firstName, lastName, age, email, password });
     await newUser.save();
 
-    // respuesta exitosa
     res.status(201).json({ id: newUser._id, message: "User created successfully" });
   } catch (err) {
     console.error("signup error:", err);
 
-    // manejamos errores de validación de mongoose
     if (err.name === "ValidationError") {
       return res.status(400).json({ message: err.message });
     }
 
-    // error de clave duplicada
     if (err.code === 11000) {
       return res.status(409).json({ message: "Email is already registered" });
     }
 
-    // otros errores
     return res.status(500).json({ message: err.message, stack: err.stack });
   }
 };
 
 // ======================================================
-// FUNCION PARA OBTENER TODOS LOS USUARIOS
+// GET ALL USERS
 // ======================================================
+/**
+ * Retrieves all users from the database, excluding passwords and __v field.
+ * 
+ * Returns:
+ *   - users (array): list of user objects without sensitive fields
+ */
 const getUsers = async (req, res) => {
   try {
-    // buscamos todos los usuarios, excluyendo password y __v
     const users = await User.find().select("-password -__v");
     res.status(200).json(users);
   } catch (err) {
@@ -74,43 +85,51 @@ const getUsers = async (req, res) => {
 };
 
 // ======================================================
-// FUNCION PARA EDITAR PERFIL DE USUARIO
+// UPDATE PROFILE
 // ======================================================
-// PUT /users/me
-// actualiza nombres, apellidos, edad y correo del usuario logueado
+/**
+ * Updates the profile of the authenticated user.
+ * 
+ * req.body:
+ *   - firstName (string, required): updated first name
+ *   - lastName (string, required): updated last name
+ *   - age (number, required): updated age (minimum 13)
+ *   - email (string, required): updated email (must be unique)
+ * 
+ * req.userId (string): authenticated user's id (set by auth middleware)
+ * 
+ * Returns:
+ *   - message (string): success message
+ *   - updatedUser (object): updated user object (without password)
+ */
 const updateProfile = async (req, res) => {
   try {
     const { firstName, lastName, age, email } = req.body;
 
-    // validamos campos requeridos
     if (!firstName || !lastName || !age || !email) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    // validación de edad mínima
     if (age < 13) {
       return res.status(400).json({ message: "Age must be at least 13" });
     }
 
-    // validación de email con regex (RFC 5322 básico)
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       return res.status(400).json({ message: "Invalid email format" });
     }
 
-    // verificamos que el correo no esté en uso por otro usuario
     const existingUser = await User.findOne({
       email,
-      _id: { $ne: req.userId }, // usamos req.userId en lugar de req.user.id
+      _id: { $ne: req.userId },
     });
 
     if (existingUser) {
       return res.status(409).json({ message: "Email is already registered" });
     }
 
-    // actualizamos perfil
     const updatedUser = await User.findByIdAndUpdate(
-      req.userId, // siempre con req.userId
+      req.userId,
       { firstName, lastName, age, email },
       { new: true, runValidators: true }
     ).select("-password -__v");
@@ -119,7 +138,6 @@ const updateProfile = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // respuesta exitosa
     res.status(200).json({
       message: "Profile updated successfully",
       updatedUser: {
@@ -132,46 +150,57 @@ const updateProfile = async (req, res) => {
     return res.status(500).json({ message: "Something went wrong" });
   }
 };
+
 // ======================================================
-// FUNCION PARA ELIMINAR USUARIO Y SUS TAREAS
+// DELETE ACCOUNT
 // ======================================================
+/**
+ * Deletes the authenticated user account along with all their tasks.
+ * 
+ * req.body:
+ *   - password (string, required): current password for verification
+ *   - confirm (string, required): must be "ELIMINAR" to confirm deletion
+ * 
+ * req.userId (string): authenticated user's id (set by auth middleware)
+ * 
+ * Returns:
+ *   - 204 No Content on success
+ */
 const deleteAccount = async (req, res) => {
   try {
     const { password, confirm } = req.body;
 
-    // validar confirmacion
     if (confirm !== "ELIMINAR") {
-      return res.status(400).json({ message: "Debes escribir ELIMINAR para confirmar" });
+      return res.status(400).json({ message: "You must type ELIMINAR to confirm" });
     }
 
-    // buscamos usuario
     const user = await User.findById(req.userId);
     if (!user) {
-      return res.status(404).json({ message: "Cuenta no encontrada" });
+      return res.status(404).json({ message: "Account not found" });
     }
 
-    // validamos contraseña
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(401).json({ message: "Contraseña incorrecta" });
+      return res.status(401).json({ message: "Incorrect password" });
     }
 
-    // eliminamos tareas asociadas
     await Task.deleteMany({ user: req.userId });
-
-    // eliminamos usuario
     await user.deleteOne();
 
-    // respondemos con 204 sin contenido
     return res.status(204).send();
   } catch (err) {
     console.error("deleteAccount error:", err.message);
     return res.status(500).json({
-      message: "No pudimos eliminar la cuenta, inténtalo más tarde",
+      message: "Unable to delete account, please try later",
       error: process.env.NODE_ENV === "development" ? err.message : undefined,
     });
   }
 };
 
-// exportamos funciones para usarlas en rutas
+// ======================================================
+// EXPORT FUNCTIONS
+// ======================================================
+/**
+ * Export all user controller functions to be used in routes
+ */
 module.exports = { signup, getUsers, updateProfile, deleteAccount };
